@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Capitale" />
+<meta name="theme-color" content="#0a0e1a" />
+<title>Capitale — Educazione Finanziaria</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #0a0e1a; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; font-family: 'Inter', -apple-system, sans-serif; }
+  body { min-height: 100vh; min-height: 100dvh; }
+  * { -webkit-user-select: none; user-select: none; }
+  .font-display { font-family: 'Fraunces', Georgia, serif; }
+  @keyframes floatUp {
+    0% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--dx, -50%), -100px) scale(0.6); opacity: 0; }
+  }
+  @keyframes ripple {
+    0% { transform: scale(0.8); opacity: 0.6; }
+    100% { transform: scale(2.2); opacity: 0; }
+  }
+  @keyframes idlePulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 20px 60px -10px rgba(251, 191, 36, 0.4), inset 0 -8px 20px rgba(0,0,0,0.3), inset 0 4px 12px rgba(255,255,255,0.2); }
+    50% { transform: scale(1.02); box-shadow: 0 25px 70px -10px rgba(251, 191, 36, 0.55), inset 0 -8px 20px rgba(0,0,0,0.3), inset 0 4px 12px rgba(255,255,255,0.2); }
+  }
+  @keyframes slideDown {
+    0% { transform: translateY(-100%); opacity: 0; }
+    10% { transform: translateY(0); opacity: 1; }
+    90% { transform: translateY(0); opacity: 1; }
+    100% { transform: translateY(-100%); opacity: 0; }
+  }
+  @keyframes modalIn {
+    0% { transform: scale(0.85); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  @keyframes bgShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  .shimmer-text {
+    background: linear-gradient(90deg, #fde68a 0%, #fbbf24 25%, #fffbeb 50%, #fbbf24 75%, #fde68a 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 3s linear infinite;
+  }
+  .tap-idle { animation: idlePulse 2.5s ease-in-out infinite; }
+  .tap-active { animation: none !important; transform: scale(0.93); }
+  .ripple-el { animation: ripple 0.6s ease-out forwards; }
+  .modal-in { animation: modalIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .toast-anim { animation: slideDown 3.5s ease forwards; }
+  .bg-animated {
+    background: linear-gradient(135deg, #1a2332 0%, #0a0e1a 40%, #1a1f3a 70%, #0a0e1a 100%);
+    background-size: 400% 400%;
+    animation: bgShift 18s ease infinite;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef } = React;
+
+const Icon = ({ d, className = "w-5 h-5", stroke = "currentColor" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{d}</svg>
+);
+const ICONS = {
+  TrendingUp: <><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></>,
+  TrendingDown: <><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></>,
+  Briefcase: <><rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></>,
+  GraduationCap: <><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></>,
+  Building2: <><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4M10 10h4M10 14h4M10 18h4"/></>,
+  X: <><path d="M18 6 6 18"/><path d="m6 6 12 12"/></>,
+  Award: <><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></>,
+  AlertCircle: <><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></>,
+  Sparkles: <><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></>,
+  Coins: <><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></>,
+  BookOpen: <><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></>,
+  Crown: <><path d="M2 19h20l-2-9-5 4-3-7-3 7-5-4z"/></>,
+  Flame: <><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></>,
+};
+const I = (name, props = {}) => <Icon d={ICONS[name]} {...props} />;
+
+const fmt = (n) => {
+  if (n >= 1e9) return '€' + (n/1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return '€' + (n/1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return '€' + (n/1e3).toFixed(1) + 'k';
+  return '€' + n.toFixed(2);
+};
+
+const TICK_MS = 2000;
+
+const LEVELS = [
+  { min: 0, name: 'Apprendista', icon: 'Sparkles', color: '#94a3b8' },
+  { min: 1000, name: 'Risparmiatore', icon: 'Coins', color: '#38bdf8' },
+  { min: 10000, name: 'Investitore', icon: 'TrendingUp', color: '#34d399' },
+  { min: 100000, name: 'Capitalista', icon: 'Award', color: '#fbbf24' },
+  { min: 1000000, name: 'Magnate', icon: 'Crown', color: '#a78bfa' },
+];
+const getLevel = (nw) => [...LEVELS].reverse().find(l => nw >= l.min);
+const getNextLevel = (nw) => LEVELS.find(l => nw < l.min);
+
+const ACHIEVEMENTS = [
+  { id: 'first_tap', title: 'Primo guadagno', desc: 'Ogni grande capitale inizia da un tap', check: (s) => s.everTapped },
+  { id: 'first_1k', title: '€1.000 raggiunti', desc: 'I primi mille sono i più difficili', check: (s) => s.netWorth >= 1000 },
+  { id: 'first_invest', title: 'Primo investimento', desc: 'I tuoi soldi iniziano a lavorare', check: (s) => s.totalInvested > 0 },
+  { id: 'first_10k', title: '€10.000 raggiunti', desc: 'Stai diventando un investitore', check: (s) => s.netWorth >= 10000 },
+  { id: 'first_etf', title: 'Diversificato', desc: 'Hai un ETF: rischio sotto controllo', check: (s) => s.etf > 0 },
+  { id: 'first_immobile', title: 'Proprietario', desc: 'Mattone su mattone', check: (s) => s.immobili >= 1 },
+  { id: 'first_100k', title: '€100.000 raggiunti', desc: 'Sei un capitalista', check: (s) => s.netWorth >= 100000 },
+  { id: 'survived_crash', title: 'Mano ferma', desc: 'Hai resistito a un crollo senza vendere', check: (s) => s.survivedCrash },
+  { id: 'first_million', title: 'Primo milione', desc: 'Welcome to the club', check: (s) => s.netWorth >= 1000000 },
+];
+
+const TUTORIALS = {
+  start: { title: 'Benvenuto in Capitale', icon: 'Sparkles', body: 'Tocca per lavorare e guadagnare. Ma attenzione: i contanti perdono valore ogni giorno per l\'inflazione (~2%/anno). Per crescere davvero il patrimonio dovrai investire.' },
+  inflation: { title: 'L\'inflazione morde', icon: 'AlertCircle', body: 'Hai notato? Tenere tutto in contanti significa perdere potere d\'acquisto. €100 oggi varranno ~€98 fra un anno. Per questo si investe.' },
+  conto: { title: 'Conto deposito', icon: 'Coins', body: 'Rende poco (~1%/anno) ma è sicurissimo. Ottimo per il fondo d\'emergenza: i soldi che ti servono "subito" se succede qualcosa.' },
+  btp: { title: 'BTP — Obbligazioni di Stato', icon: 'BookOpen', body: 'Presti soldi allo Stato italiano e ricevi interessi (~3,5%/anno). Rischio basso, rendimento moderato. Buon equilibrio.' },
+  etf: { title: 'ETF azionari', icon: 'TrendingUp', body: 'Un paniere di azioni diversificato. In media ~7%/anno nel lungo periodo, ma volatile: può crollare del 30% in un anno cattivo. La pazienza è tutto.' },
+  immobili: { title: 'Immobili', icon: 'Building2', body: 'Costo iniziale alto (€50k cad.) ma rendita passiva costante (~5%/anno di affitti). Poco liquido: non lo rivendi facilmente.' },
+  studio: { title: 'Investi su te stesso', icon: 'GraduationCap', body: 'Il miglior investimento. Studiare aumenta quanto guadagni per ogni ora di lavoro. Rendimenti del capitale umano = i più alti in assoluto.' },
+  compound: { title: 'Interesse composto', icon: 'Award', body: 'Einstein lo chiamava l\'ottava meraviglia del mondo. I tuoi guadagni generano altri guadagni. Più tempo passa, più la crescita accelera.' },
+};
+
+const EVENTS = [
+  { id: 'crash', title: 'Crollo di mercato!', body: 'Gli ETF perdono il 25%. Chi vende ora, perde davvero. Chi resta, recupera nel tempo.', icon: 'TrendingDown', effect: (s) => ({ ...s, etf: s.etf * 0.75 }) },
+  { id: 'bull', title: 'Mercato in rialzo', body: 'Ottimismo generale: ETF +15%. Ricorda però che la volatilità funziona in entrambe le direzioni.', icon: 'TrendingUp', effect: (s) => ({ ...s, etf: s.etf * 1.15 }) },
+  { id: 'bonus', title: 'Tredicesima!', body: 'Un mese di stipendio extra. Cosa ne farai? Spenderlo è facile, investirlo lavora per te.', icon: 'Coins', effect: (s) => ({ ...s, cash: s.cash + s.tapValue * 200 }) },
+  { id: 'spesa', title: 'Spesa imprevista', body: 'Caldaia rotta: -€500. Avere un fondo d\'emergenza evita di dover vendere investimenti nel momento sbagliato.', icon: 'AlertCircle', effect: (s) => ({ ...s, cash: Math.max(0, s.cash - 500) }) },
+  { id: 'div', title: 'Dividendi BTP', body: 'Cedola staccata: +3% sui BTP. Le obbligazioni pagano periodicamente.', icon: 'Sparkles', effect: (s) => ({ ...s, btp: s.btp * 1.03 }) },
+];
+
+function Sparkline({ data }) {
+  if (data.length < 2) return <div className="w-full h-10" />;
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const points = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * 100;
+    const y = 95 - ((v - min) / range) * 85;
+    return `${x},${y}`;
+  }).join(' ');
+  const trend = data[data.length - 1] >= data[0];
+  const stroke = trend ? '#34d399' : '#fb7185';
+  const fill = trend ? 'rgba(52, 211, 153, 0.12)' : 'rgba(251, 113, 133, 0.12)';
+  return (
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-10">
+      <polygon points={`0,100 ${points} 100,100`} fill={fill} />
+      <polyline points={points} fill="none" stroke={stroke} strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CapitalGame() {
+  const [cash, setCash] = useState(100);
+  const [tapValue, setTapValue] = useState(1);
+  const [day, setDay] = useState(1);
+  const [tab, setTab] = useState('lavoro');
+  const [floaters, setFloaters] = useState([]);
+  const [ripples, setRipples] = useState([]);
+  const [modal, setModal] = useState({ type: 'tutorial', key: 'start' });
+  const [seen, setSeen] = useState({});
+  const [eventLog, setEventLog] = useState([]);
+  const [conto, setConto] = useState(0);
+  const [btp, setBtp] = useState(0);
+  const [etf, setEtf] = useState(0);
+  const [immobili, setImmobili] = useState(0);
+  const [eduLevel, setEduLevel] = useState(0);
+  const [marketTrend, setMarketTrend] = useState(1);
+  const [history, setHistory] = useState([100]);
+  const [combo, setCombo] = useState(0);
+  const [unlockedAch, setUnlockedAch] = useState({});
+  const [toasts, setToasts] = useState([]);
+  const [everTapped, setEverTapped] = useState(false);
+  const [survivedCrash, setSurvivedCrash] = useState(false);
+  const [tapping, setTapping] = useState(false);
+
+  const lastTapRef = useRef(0);
+  const comboTimerRef = useRef(null);
+
+  const netWorth = cash + conto + btp + etf + immobili * 50000;
+  const passiveDaily = (conto * 0.01 + btp * 0.035 + etf * 0.07 + immobili * 50000 * 0.05) / 365;
+  const totalInvested = conto + btp + etf + immobili * 50000;
+  const level = getLevel(netWorth);
+  const nextLevel = getNextLevel(netWorth);
+  const levelProgress = nextLevel ? ((netWorth - level.min) / (nextLevel.min - level.min)) * 100 : 100;
+
+  const showTutorial = (key) => {
+    if (!seen[key]) {
+      setModal({ type: 'tutorial', key });
+      setSeen(s => ({ ...s, [key]: true }));
+    }
+  };
+
+  const pushToast = (title, desc) => {
+    const id = Date.now() + Math.random();
+    setToasts(t => [...t, { id, title, desc }]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3500);
+  };
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setDay(d => d + 1);
+      setConto(v => v * (1 + 0.01/365));
+      setBtp(v => v * (1 + 0.035/365));
+      setEtf(v => v * (1 + (0.07/365) * marketTrend));
+      setCash(c => c * (1 - 0.02/365) + (immobili * 50000 * 0.05 / 365));
+      setMarketTrend(t => Math.max(0.4, Math.min(1.6, t + (Math.random() - 0.5) * 0.06)));
+      setHistory(h => [...h.slice(-39), cash + conto + btp + etf + immobili * 50000]);
+
+      if (Math.random() < 0.022) {
+        const ev = EVENTS[Math.floor(Math.random() * EVENTS.length)];
+        setModal({ type: 'event', event: ev });
+      }
+    }, TICK_MS);
+    return () => clearInterval(id);
+  }, [immobili, marketTrend, cash, conto, btp, etf]);
+
+  useEffect(() => {
+    if (day === 30) showTutorial('inflation');
+    if (day === 90) showTutorial('compound');
+  }, [day]);
+
+  useEffect(() => {
+    const state = { netWorth, totalInvested, etf, immobili, everTapped, survivedCrash };
+    ACHIEVEMENTS.forEach(a => {
+      if (!unlockedAch[a.id] && a.check(state)) {
+        setUnlockedAch(u => ({ ...u, [a.id]: true }));
+        pushToast(a.title, a.desc);
+      }
+    });
+  }, [netWorth, totalInvested, etf, immobili, everTapped, survivedCrash]);
+
+  const prevLevelRef = useRef(level.name);
+  useEffect(() => {
+    if (level.name !== prevLevelRef.current) {
+      pushToast(`Livello: ${level.name}`, 'Hai raggiunto un nuovo traguardo');
+      prevLevelRef.current = level.name;
+    }
+  }, [level.name]);
+
+  const handleTap = (e) => {
+    setCash(c => c + tapValue);
+    setEverTapped(true);
+    setTapping(true);
+    setTimeout(() => setTapping(false), 120);
+
+    const now = Date.now();
+    if (now - lastTapRef.current < 500) {
+      setCombo(c => Math.min(c + 1, 99));
+    } else {
+      setCombo(1);
+    }
+    lastTapRef.current = now;
+    clearTimeout(comboTimerRef.current);
+    comboTimerRef.current = setTimeout(() => setCombo(0), 1200);
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const touch = e.nativeEvent.touches ? e.nativeEvent.touches[0] : e.nativeEvent;
+    const cx = (touch.clientX || rect.left + rect.width/2) - rect.left;
+    const cy = (touch.clientY || rect.top + rect.height/2) - rect.top;
+
+    const newFloaters = [];
+    for (let i = 0; i < 3; i++) {
+      const id = now + Math.random();
+      const dx = (Math.random() - 0.5) * 120;
+      newFloaters.push({ id, x: cx + (Math.random() - 0.5) * 30, y: cy + (Math.random() - 0.5) * 20, v: tapValue, dx });
+    }
+    setFloaters(f => [...f, ...newFloaters]);
+    setTimeout(() => {
+      setFloaters(f => f.filter(fl => !newFloaters.find(nf => nf.id === fl.id)));
+    }, 900);
+
+    const rid = now + Math.random() + 0.5;
+    setRipples(r => [...r, { id: rid, x: cx, y: cy }]);
+    setTimeout(() => setRipples(r => r.filter(rl => rl.id !== rid)), 600);
+  };
+
+  const buy = (setter, key) => (amt) => {
+    if (cash >= amt) { setCash(c => c - amt); setter(v => v + amt); showTutorial(key); }
+  };
+  const sell = (which, amt) => {
+    if (which === 'conto' && conto >= amt) { setConto(v => v - amt); setCash(c => c + amt); }
+    if (which === 'btp' && btp >= amt) { setBtp(v => v - amt); setCash(c => c + amt); }
+    if (which === 'etf' && etf >= amt) { setEtf(v => v - amt); setCash(c => c + amt); }
+  };
+  const buyImmobile = () => {
+    if (cash >= 50000) { setCash(c => c - 50000); setImmobili(i => i + 1); showTutorial('immobili'); }
+  };
+  const studyCost = Math.floor(50 * Math.pow(2.2, eduLevel));
+  const study = () => {
+    if (cash >= studyCost) { setCash(c => c - studyCost); setEduLevel(l => l + 1); setTapValue(v => v * 1.5); showTutorial('studio'); }
+  };
+
+  const closeModal = () => {
+    if (modal?.type === 'event') {
+      const next = modal.event.effect({ cash, tapValue, etf, btp, conto });
+      setCash(next.cash); setEtf(next.etf); setBtp(next.btp); setConto(next.conto);
+      setEventLog(l => [{ ...modal.event, day }, ...l].slice(0, 6));
+      if (modal.event.id === 'crash' && etf > 0) setSurvivedCrash(true);
+    }
+    setModal(null);
+  };
+
+  return (
+    <div className="w-full min-h-screen flex items-center justify-center p-2 bg-animated">
+      <div className="w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl relative" style={{ background: '#0d1117', minHeight: '820px', border: '1px solid #1f2937' }}>
+
+        <div className="absolute top-2 left-0 right-0 z-50 px-4 pointer-events-none space-y-2">
+          {toasts.map(t => (
+            <div key={t.id} className="toast-anim rounded-xl px-4 py-3 flex items-start gap-3 shadow-2xl" style={{ background: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)', border: '1px solid #d97706' }}>
+              {I('Award', { className: 'w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0' })}
+              <div className="flex-1 min-w-0">
+                <div className="text-amber-300 text-xs font-semibold leading-tight">{t.title}</div>
+                <div className="text-stone-400 text-[10px] mt-0.5">{t.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="px-5 pt-4 pb-2 flex items-center justify-between">
+          <h1 className="font-display tracking-tight text-stone-100" style={{ fontSize: '24px', fontWeight: 600 }}>
+            Capitale<span className="text-amber-400">.</span>
+          </h1>
+          <div className="flex items-center gap-2 px-2.5 py-1 rounded-full" style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${level.color}40` }}>
+            {I(level.icon, { className: 'w-3 h-3', stroke: level.color })}
+            <span className="text-[10px] font-semibold tracking-wide" style={{ color: level.color }}>{level.name}</span>
+          </div>
+        </div>
+
+        <div className="mx-4 mb-3 rounded-2xl p-4 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #1a2332 0%, #0f1722 100%)', border: '1px solid #1f2937' }}>
+          <div className="flex justify-between items-start mb-1">
+            <div className="text-[10px] text-stone-500 uppercase tracking-widest">Patrimonio netto</div>
+            <div className="text-[10px] text-stone-500 font-mono">Giorno {day}</div>
+          </div>
+          <div className="font-display shimmer-text text-3xl" style={{ fontWeight: 600, letterSpacing: '-0.02em' }}>
+            {fmt(netWorth)}
+          </div>
+          <div className="mt-2">
+            <Sparkline data={history} />
+          </div>
+          <div className="flex items-center justify-between mt-1">
+            <div className="text-[11px]">
+              <span className="text-emerald-400 font-semibold">+{fmt(passiveDaily)}</span>
+              <span className="text-stone-500">/giorno</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px]">
+              <span className="text-stone-500">Mercato</span>
+              <span className={`font-mono font-semibold ${marketTrend >= 1 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {marketTrend >= 1 ? '↑' : '↓'} {((marketTrend - 1) * 100).toFixed(0)}%
+              </span>
+            </div>
+          </div>
+          {nextLevel && (
+            <div className="mt-3">
+              <div className="flex justify-between text-[9px] text-stone-500 mb-1">
+                <span>→ {nextLevel.name}</span>
+                <span>{fmt(nextLevel.min)}</span>
+              </div>
+              <div className="h-1 rounded-full overflow-hidden" style={{ background: '#1f2937' }}>
+                <div className="h-full transition-all duration-500 rounded-full" style={{ width: `${Math.min(100, levelProgress)}%`, background: `linear-gradient(90deg, ${level.color}, ${nextLevel.color})` }} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="mx-4 mb-3 flex justify-between items-center px-4 py-2.5 rounded-xl" style={{ background: 'linear-gradient(90deg, #111827 0%, #1a1f2e 100%)', border: '1px solid #1f2937' }}>
+          <div className="flex items-center gap-2">
+            {I('Coins', { className: 'w-3.5 h-3.5 text-amber-400' })}
+            <span className="text-[10px] uppercase tracking-widest text-stone-500">Liquidità</span>
+          </div>
+          <span className="text-amber-300 font-mono font-semibold text-sm">{fmt(cash)}</span>
+        </div>
+
+        <div className="px-4 pb-20" style={{ minHeight: '460px' }}>
+          {tab === 'lavoro' && (
+            <div className="flex flex-col items-center pt-1">
+              <p className="text-[11px] text-stone-400 text-center mb-3 px-4">
+                Tocca per lavorare. Ogni tap = <span className="text-amber-400 font-semibold">{fmt(tapValue)}</span>
+              </p>
+              <div className="relative">
+                {combo > 1 && (
+                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 px-3 py-1 rounded-full" style={{ background: 'linear-gradient(90deg, #b91c1c, #ea580c)', boxShadow: '0 4px 20px rgba(239, 68, 68, 0.5)' }}>
+                    {I('Flame', { className: 'w-3 h-3 text-amber-200' })}
+                    <span className="text-white text-xs font-bold">{combo}× COMBO</span>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleTap}
+                  className={`relative w-56 h-56 rounded-full select-none ${tapping ? 'tap-active' : 'tap-idle'}`}
+                  style={{
+                    background: 'radial-gradient(circle at 30% 30%, #fde68a 0%, #fbbf24 30%, #d97706 65%, #92400e 100%)',
+                    transition: 'transform 0.08s ease-out',
+                  }}
+                >
+                  <div className="absolute inset-2 rounded-full" style={{ background: 'radial-gradient(circle at 35% 35%, rgba(255,255,255,0.4) 0%, transparent 50%)' }} />
+
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="font-display text-amber-100" style={{ fontSize: '76px', fontWeight: 600, textShadow: '0 4px 20px rgba(0,0,0,0.4)' }}>€</span>
+                  </div>
+
+                  {ripples.map(r => (
+                    <span key={r.id} className="absolute rounded-full ripple-el pointer-events-none"
+                      style={{ left: r.x - 30, top: r.y - 30, width: 60, height: 60, border: '2px solid rgba(254, 243, 199, 0.8)' }} />
+                  ))}
+
+                  {floaters.map(f => (
+                    <span key={f.id} className="absolute pointer-events-none font-bold text-base z-20"
+                      style={{ left: f.x, top: f.y, color: '#86efac', textShadow: '0 2px 8px rgba(0,0,0,0.6)', '--dx': `${f.dx}px`, animation: 'floatUp 0.9s ease-out forwards' }}>
+                      +{fmt(f.v)}
+                    </span>
+                  ))}
+                </button>
+              </div>
+
+              <div className="mt-5 w-full space-y-2">
+                <div className="text-[10px] uppercase tracking-widest text-stone-500 px-1">Cronologia eventi</div>
+                {eventLog.length === 0 && <div className="text-[11px] text-stone-600 italic px-1">Nessun evento ancora...</div>}
+                {eventLog.map((e, i) => (
+                  <div key={i} className="text-[11px] text-stone-400 px-3 py-2 rounded-lg flex items-center gap-2" style={{ background: '#111827', border: '1px solid #1f2937' }}>
+                    {I(e.icon, { className: 'w-3 h-3 text-stone-500' })}
+                    <span className="text-stone-500 font-mono">G{e.day}</span>
+                    <span>·</span>
+                    <span>{e.title}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tab === 'investi' && (
+            <div className="space-y-3 pt-1">
+              <InvestCard label="Conto Deposito" sub="~1% / anno · rischio nullo" color="sky" holding={conto} cash={cash} onBuy={buy(setConto, 'conto')} onSell={(a) => sell('conto', a)} />
+              <InvestCard label="BTP" sub="~3,5% / anno · rischio basso" color="emerald" holding={btp} cash={cash} onBuy={buy(setBtp, 'btp')} onSell={(a) => sell('btp', a)} />
+              <InvestCard label="ETF Azionari" sub="~7% / anno · volatile" color="amber" holding={etf} cash={cash} volatile={marketTrend} onBuy={buy(setEtf, 'etf')} onSell={(a) => sell('etf', a)} />
+              <div className="rounded-xl p-4" style={{ background: 'linear-gradient(135deg, #1c1917 0%, #111827 100%)', border: '1px solid #44403c' }}>
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center gap-2">
+                    {I('Building2', { className: 'w-4 h-4 text-orange-400' })}
+                    <div>
+                      <div className="text-stone-200 text-sm font-semibold">Immobili</div>
+                      <div className="text-[10px] text-stone-500">€50.000 cad. · rendita 5%/anno</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] text-stone-500">Possiedi</div>
+                    <div className="text-orange-400 text-sm font-semibold">{immobili}</div>
+                  </div>
+                </div>
+                <button onClick={buyImmobile} disabled={cash < 50000} className="w-full py-2 rounded-lg text-xs font-semibold disabled:opacity-30 transition-all active:scale-95"
+                  style={{ background: cash >= 50000 ? 'linear-gradient(135deg, #c2410c, #9a3412)' : '#1f2937', color: cash >= 50000 ? '#fed7aa' : '#6b7280' }}>
+                  Acquista immobile · €50.000
+                </button>
+              </div>
+            </div>
+          )}
+
+          {tab === 'studio' && (
+            <div className="space-y-3 pt-1">
+              <div className="rounded-2xl p-5 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #2e1065 0%, #1e1b4b 50%, #0f0d2e 100%)', border: '1px solid #4c1d95' }}>
+                <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-20" style={{ background: 'radial-gradient(circle, #a78bfa, transparent)' }} />
+                {I('GraduationCap', { className: 'w-7 h-7 text-violet-300 mb-2' })}
+                <div className="text-stone-100 text-sm font-semibold mb-1">Investi su te stesso</div>
+                <div className="text-[11px] text-stone-400 mb-3 leading-relaxed">
+                  Ogni livello aumenta del 50% quanto guadagni per ogni tap. Il capitale umano è l'asset più potente.
+                </div>
+                <div className="flex justify-between items-center text-[11px] text-stone-400 mb-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(0,0,0,0.3)' }}>
+                  <span>Livello attuale</span><span className="text-violet-300 font-mono font-bold">{eduLevel}</span>
+                </div>
+                <div className="flex justify-between items-center text-[11px] text-stone-400 mb-3 px-3 py-2 rounded-lg" style={{ background: 'rgba(0,0,0,0.3)' }}>
+                  <span>Reddito attivo</span><span className="text-amber-400 font-mono font-bold">{fmt(tapValue)}/tap</span>
+                </div>
+                <button onClick={study} disabled={cash < studyCost} className="w-full py-2.5 rounded-lg text-xs font-semibold disabled:opacity-30 transition-all active:scale-95"
+                  style={{ background: cash >= studyCost ? 'linear-gradient(135deg, #7c3aed, #6d28d9)' : '#1f2937', color: cash >= studyCost ? '#ede9fe' : '#6b7280', boxShadow: cash >= studyCost ? '0 4px 20px rgba(124, 58, 237, 0.4)' : 'none' }}>
+                  Studia · {fmt(studyCost)}
+                </button>
+              </div>
+
+              <div className="rounded-xl p-4" style={{ background: '#111827', border: '1px solid #1f2937' }}>
+                <div className="flex items-center gap-2 mb-3">
+                  {I('Award', { className: 'w-4 h-4 text-amber-400' })}
+                  <div className="text-stone-300 text-xs font-semibold">Obiettivi</div>
+                  <div className="ml-auto text-[10px] text-stone-500 font-mono">
+                    {Object.keys(unlockedAch).length}/{ACHIEVEMENTS.length}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  {ACHIEVEMENTS.map(a => {
+                    const done = unlockedAch[a.id];
+                    return (
+                      <div key={a.id} className="flex items-center gap-2 px-2 py-1.5 rounded-md" style={{ background: done ? 'rgba(217, 119, 6, 0.1)' : 'transparent' }}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${done ? 'bg-amber-400' : 'bg-stone-700'}`} />
+                        <div className={`text-[10.5px] ${done ? 'text-amber-300' : 'text-stone-600'}`}>{a.title}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="rounded-xl p-4 text-[11px] text-stone-400 leading-relaxed" style={{ background: '#111827', border: '1px solid #1f2937' }}>
+                <div className="text-stone-300 mb-1 font-semibold">💡 Concetti chiave</div>
+                <ul className="space-y-1.5 mt-2">
+                  <li>• <span className="text-stone-300">Diversifica</span>: non mettere tutto in un solo asset</li>
+                  <li>• <span className="text-stone-300">Tempo &gt; tempistica</span>: il "quando" investi conta meno del "per quanto"</li>
+                  <li>• <span className="text-stone-300">Fondo emergenza</span>: 3-6 mesi di spese in liquidità</li>
+                  <li>• <span className="text-stone-300">Rischio = rendimento</span>: non c'è ritorno senza rischio</li>
+                </ul>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="absolute bottom-0 left-0 right-0 px-2 py-2 flex justify-around" style={{ background: 'rgba(10, 14, 26, 0.95)', backdropFilter: 'blur(10px)', borderTop: '1px solid #1f2937', paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
+          <NavBtn iconName="Briefcase" label="Lavoro" active={tab === 'lavoro'} onClick={() => setTab('lavoro')} />
+          <NavBtn iconName="TrendingUp" label="Investi" active={tab === 'investi'} onClick={() => setTab('investi')} />
+          <NavBtn iconName="GraduationCap" label="Studio" active={tab === 'studio'} onClick={() => setTab('studio')} />
+        </div>
+
+        {modal && (
+          <div className="absolute inset-0 flex items-center justify-center p-6 z-50" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(10px)' }}>
+            <div className="rounded-2xl p-5 w-full relative modal-in" style={{ background: 'linear-gradient(135deg, #1a2332 0%, #0f1722 100%)', border: '1px solid #374151', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+              <button onClick={closeModal} className="absolute top-3 right-3 text-stone-500 active:scale-90 transition-transform">{I('X', { className: 'w-4 h-4' })}</button>
+              <div className="mb-3 w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(217, 119, 6, 0.2), rgba(180, 83, 9, 0.1))', border: '1px solid rgba(217, 119, 6, 0.3)' }}>
+                {I(modal.type === 'tutorial' ? TUTORIALS[modal.key].icon : modal.event.icon, { className: 'w-6 h-6 text-amber-400' })}
+              </div>
+              <div className="text-stone-100 text-lg mb-2 font-display" style={{ fontWeight: 600 }}>
+                {modal.type === 'tutorial' ? TUTORIALS[modal.key].title : modal.event.title}
+              </div>
+              <div className="text-stone-300 text-[12px] leading-relaxed mb-4">
+                {modal.type === 'tutorial' ? TUTORIALS[modal.key].body : modal.event.body}
+              </div>
+              <button onClick={closeModal} className="w-full py-3 rounded-lg text-xs font-semibold active:scale-95 transition-transform"
+                style={{ background: 'linear-gradient(135deg, #d97706, #b45309)', color: '#fef3c7', boxShadow: '0 4px 20px rgba(217, 119, 6, 0.4)' }}>
+                Ho capito
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function NavBtn({ iconName, label, active, onClick }) {
+  return (
+    <button onClick={onClick} className="flex-1 py-1.5 flex flex-col items-center gap-0.5 transition-all active:scale-95">
+      <div className={`p-1.5 rounded-lg transition-colors ${active ? 'bg-amber-500/10' : ''}`}>
+        {I(iconName, { className: `w-5 h-5 ${active ? 'text-amber-400' : 'text-stone-500'}` })}
+      </div>
+      <span className={`text-[9px] tracking-wider uppercase font-semibold ${active ? 'text-amber-400' : 'text-stone-500'}`}>{label}</span>
+    </button>
+  );
+}
+
+function InvestCard({ label, sub, color, holding, cash, onBuy, onSell, volatile }) {
+  const colors = {
+    sky: { bg: 'linear-gradient(135deg, #0c4a6e, #075985)', text: '#bae6fd', accent: '#38bdf8', border: '#0c4a6e' },
+    emerald: { bg: 'linear-gradient(135deg, #064e3b, #065f46)', text: '#a7f3d0', accent: '#34d399', border: '#065f46' },
+    amber: { bg: 'linear-gradient(135deg, #78350f, #92400e)', text: '#fde68a', accent: '#fbbf24', border: '#92400e' },
+  }[color];
+
+  return (
+    <div className="rounded-xl p-4 transition-all" style={{ background: '#111827', border: `1px solid ${colors.border}` }}>
+      <div className="flex justify-between items-start mb-3">
+        <div>
+          <div className="text-stone-200 text-sm font-semibold flex items-center gap-2">
+            {label}
+            {volatile !== undefined && (
+              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded font-bold" style={{ background: volatile >= 1 ? '#064e3b' : '#7f1d1d', color: volatile >= 1 ? '#a7f3d0' : '#fecaca' }}>
+                {volatile >= 1 ? '+' : ''}{((volatile - 1) * 100).toFixed(0)}%
+              </span>
+            )}
+          </div>
+          <div className="text-[10px] text-stone-500 mt-0.5">{sub}</div>
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] text-stone-500">Detenuto</div>
+          <div className="text-sm font-semibold" style={{ color: colors.accent }}>{fmt(holding)}</div>
+        </div>
+      </div>
+      <div className="flex gap-1.5">
+        {[100, 1000, 10000].map(a => (
+          <button key={a} onClick={() => onBuy(a)} disabled={cash < a}
+            className="flex-1 py-2 rounded-md text-[10px] font-bold disabled:opacity-25 active:scale-95 transition-all"
+            style={{ background: cash >= a ? colors.bg : '#1f2937', color: cash >= a ? colors.text : '#6b7280' }}>
+            +{a >= 1000 ? (a/1000)+'k' : a}
+          </button>
+        ))}
+        <button onClick={() => onSell(Math.min(holding, 1000))} disabled={holding < 1}
+          className="px-3 py-2 rounded-md text-[10px] font-bold disabled:opacity-25 active:scale-95 transition-all"
+          style={{ background: '#374151', color: '#d1d5db' }}>
+          ↓
+        </button>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<CapitalGame />);
+</script>
+</body>
+</html>
